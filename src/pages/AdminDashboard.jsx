@@ -3,20 +3,23 @@ import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/f
 import { db, auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { signOut, onAuthStateChanged } from 'firebase/auth'; // ← Add onAuthStateChanged
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { UtensilsCrossed, LogOut, TrendingUp, ShoppingBag, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast'; // ← You used toast but didn't import it
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null); // ← Make user a state
+  const [user, setUser] = useState(null);
+  const [user, loadingAuth] = useAuthState(auth); 
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({ totalRevenue: 0, totalOrders: 0, avgOrder: 0 });
   const [loading, setLoading] = useState(true);
+  
 
   // Brand colors for pie chart segments
   const COLORS = ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5', '#ea580c'];
-
+  
   // Step 1: Listen for auth state changes first
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
