@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 import AdminLogin from './pages/AdminLogin';
 import Adminsignup from './pages/Adminsignup';
 import TablesPage from './pages/TablesPage'; 
+import DemoDashboard from './pages/DemoDashboard';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="orders" element={<OrdersPage />} />
           <Route path="tables" element={<TablesPage />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="/demo" element={<DemoDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

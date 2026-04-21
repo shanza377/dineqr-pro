@@ -54,7 +54,7 @@ export default function Landing() {
               to="/menu/demo"
               className="bg-white border-2 border-dine-500 text-dine-600 px-8 py-4 rounded-2xl font-bold hover:bg-dine-50 transition text-center"
             >
-              View Demo Menu
+              View Demo Dashboard
             </Link>
             <Link
               to="/admin/signup"
