@@ -7,18 +7,18 @@ const DemoDashboard = () => {
       <div className="max-w-6xl mx-auto">
         <div className="bg-yellow-200 border-l-4 border-yellow-600 text-yellow-900 p-4 mb-6 rounded">
           <p className="font-bold">DEMO MODE ACTIVE</p>
-          <p>Ye DineQR Pro ka live preview hai. Apna restaurant add karne ke liye <Link to="/login" className="underline font-bold">Sign Up karein</Link></p>
+          <p>Live preview of DineQR Pro <Link to="/login" className="underline font-bold">Sign Up karein</Link></p>
         </div>
 
         <h1 className="text-3xl font-bold mb-6">Restaurant Dashboard - Demo</h1>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-gray-500">Aaj ke Orders</p>
+            <p className="text-gray-500">Today Orders</p>
             <p className="text-3xl font-bold">47</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-gray-500">Aaj ki Sale</p>
+            <p className="text-gray-500">Today Sale</p>
             <p className="text-3xl font-bold">Rs. 23,400</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
@@ -38,12 +38,12 @@ const DemoDashboard = () => {
             <button disabled className="bg-blue-200 text-blue-800 px-4 py-2 rounded cursor-not-allowed">Generate QR Code</button>
             <button disabled className="bg-green-200 text-green-800 px-4 py-2 rounded cursor-not-allowed">View Orders</button>
           </div>
-          <p className="text-sm text-gray-500 mt-2">*Ye buttons signup ke baad active honge</p>
+          <p className="text-sm text-gray-500 mt-2">All buttons active after signup</p>
         </div>
 
         <div className="text-center">
-          <Link to="/login" className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold text-lg">
-            Free Trial Shuru Karein →
+          <Link to="/admin/signup" className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold text-lg">
+            Start Free Trial →
           </Link>
         </div>
       </div>
