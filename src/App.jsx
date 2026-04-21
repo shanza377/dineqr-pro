@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './pages/AdminDashboard';
 import MenuPage from './pages/MenuPage';
@@ -25,6 +26,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
+      <Analytics />
     </BrowserRouter>
   );
 }
