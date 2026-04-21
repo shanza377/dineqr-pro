@@ -9,6 +9,7 @@ import AdminLogin from './pages/AdminLogin';
 import Adminsignup from './pages/Adminsignup';
 import TablesPage from './pages/TablesPage'; 
 import DemoDashboard from './pages/DemoDashboard';
+import PublicMenu from './pages/PublicMenu';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/signup" element={<Adminsignup />} />
         <Route path="/demo" element={<DemoDashboard />} />
+        <Route path="/menu/:restaurantId/:tableId" element={<PublicMenu />} />
         
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="dashboard" element={<AdminDashboard />} />
