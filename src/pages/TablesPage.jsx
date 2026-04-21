@@ -16,7 +16,7 @@ const TablesPage = () => {
       return;
     }
 
-    // ✅ YAHAN FIX HAI - TABLES KI SAHI SUBCOLLECTION
+   
     const tablesRef = collection(db, 'restaurants', user.uid, 'tables');
     const q = query(tablesRef);
 
@@ -41,7 +41,7 @@ const TablesPage = () => {
 
     const tableNumber = tables.length + 1;
     try {
-      // ✅ ADD KARTE WAQT BHI SAHI PATH
+      
       const tablesRef = collection(db, 'restaurants', user.uid, 'tables');
 
       await addDoc(tablesRef, {
@@ -61,7 +61,7 @@ const TablesPage = () => {
     if (!user) return;
 
     try {
-      // ✅ DELETE KARTE WAQT BHI SAHI PATH
+      
       await deleteDoc(doc(db, 'restaurants', user.uid, 'tables', tableId));
       toast.success("Table deleted!");
     } catch (error) {
