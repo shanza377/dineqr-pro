@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AddItemModal from '../components/AddItemModal';
 import { Plus } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast'; 
+import toast, { Toaster } from 'react-hot-toast';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 const MenuPage = () => {
   const [menuItems, setMenuItems] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false); 
+  const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const user = auth.currentUser;
+  const [user] = useAuthState(auth); // useAuthState 
 
   useEffect(() => {
     if (!user) {
@@ -17,15 +18,13 @@ const MenuPage = () => {
       return;
     }
 
-    const q = query(
-      collection(db, 'menuItems'),
-      where('restaurantId', '==', user.uid)
-    );
+    const menuRef = collection(db, 'restaurants', user.uid, 'menuItems');
+    const q = query(menuRef);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+       ...doc.data()
       }));
       setMenuItems(items);
       setLoading(false);
@@ -36,7 +35,7 @@ const MenuPage = () => {
     });
 
     return () => unsubscribe();
-  }, ); // ← user.uid dependency
+  }, [user]); // user dependency
 
   if (loading) {
     return <div className="text-center py-20">Loading menu...</div>;
@@ -47,8 +46,8 @@ const MenuPage = () => {
       <Toaster position="top-right" />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Menu Items</h1>
-        <button 
-          onClick={() => setShowAddModal(true)} 
+        <button
+          onClick={() => setShowAddModal(true)}
           className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2 cursor-pointer"
         >
           <Plus size={20} />
@@ -65,10 +64,10 @@ const MenuPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {menuItems.map(item => (
             <div key={item.id} className="bg-white rounded-2xl border p-4">
-              <img 
-                src={item.imageUrl || 'https://via.placeholder.com/300'} 
-                alt={item.name} 
-                className="w-full h-40 object-cover rounded-lg mb-3" 
+              <img
+                src={item.imageUrl || 'https://via.placeholder.com/300'}
+                alt={item.name}
+                className="w-full h-40 object-cover rounded-lg mb-3"
               />
               <h3 className="font-bold text-lg">{item.name}</h3>
               <p className="text-gray-600">{item.category}</p>
@@ -78,10 +77,9 @@ const MenuPage = () => {
         </div>
       )}
 
-      
-      <AddItemModal 
-        isOpen={showAddModal} 
-        onClose={() => setShowAddModal(false)} 
+      <AddItemModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
       />
     </div>
   );
