@@ -8,10 +8,10 @@ import toast, { Toaster } from 'react-hot-toast';
 const TablesPage = () => {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user] = useAuthState(auth);
+  const [user, loadingAuth]=useAuthState(auth);
 
   useEffect(() => {
-    if (!user) {
+    if (loadingAuth||!user) {
       setLoading(false);
       return;
     }
