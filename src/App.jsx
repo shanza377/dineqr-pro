@@ -17,6 +17,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/signup" element={<Adminsignup />} />
+        <Route path="/demo" element={<DemoDashboard />} />
         
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="dashboard" element={<AdminDashboard />} />
@@ -24,7 +25,6 @@ function App() {
           <Route path="orders" element={<OrdersPage />} />
           <Route path="tables" element={<TablesPage />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="/demo" element={<DemoDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>
