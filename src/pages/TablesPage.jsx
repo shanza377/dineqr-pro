@@ -113,7 +113,7 @@ const TablesPage = () => {
         <h1 className="text-3xl font-bold text-gray-900">Tables</h1>
         <button
           onClick={handleAddTable}
-          className="bg-gradient-to-r from-red-500 to-orange-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition flex items-center gap-2"
+          className="bg-gradient-to-r from-red-500 to-orange-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
         >
           <Plus size={20} />
           Add New Table
