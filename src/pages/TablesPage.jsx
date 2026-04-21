@@ -79,7 +79,7 @@ const TablesPage = () => {
   const getMenuUrl = (tableId) => {
     // For mobile testing use your network IP
     // Replace 192.168.1.4 with your actual IP from terminal
-    const baseUrl = 'http://192.168.1.4:5173'; 
+    const baseUrl = window.location.origin; 
     return `${baseUrl}/menu/${user.uid}?table=${tableId}`;
   };
 
