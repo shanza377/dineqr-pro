@@ -4,7 +4,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { X, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const IMGBB_API_KEY = 'f56d3452792b38bb6ef9144c9e1c86ea'; // API key
+const IMGBB_API_KEY = 'f56d3452792b38bb6ef9144c9e1c86ea';
 
 export default function AddItemModal({ isOpen, onClose }) {
   const [name, setName] = useState('');
@@ -17,7 +17,7 @@ export default function AddItemModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files;
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
@@ -35,7 +35,7 @@ export default function AddItemModal({ isOpen, onClose }) {
 
     const data = await res.json();
     if (data.success) {
-      return data.data.url; // return the image URL
+      return data.data.url;
     } else {
       throw new Error('Image upload failed');
     }
@@ -45,23 +45,32 @@ export default function AddItemModal({ isOpen, onClose }) {
     e.preventDefault();
     setLoading(true);
 
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error("Please login first");
+      setLoading(false);
+      return;
+    }
+
     try {
       let imageUrl = '';
 
-      // upload image if selected
       if (imageFile) {
         toast.loading('Uploading image...', { id: 'upload' });
         imageUrl = await uploadToImgBB(imageFile);
         toast.success('Image uploaded!', { id: 'upload' });
       }
 
-      await addDoc(collection(db, 'menuItems'), {
+      // ✅ YAHAN FIX HAI - SAHI SUBCOLLECTION PATH
+      const menuRef = collection(db, 'restaurants', user.uid, 'menuItems');
+
+      await addDoc(menuRef, {
         name,
         price: Number(price),
         category,
         imageUrl,
-        restaurantId: auth.currentUser.uid, // Changed from userId to restaurantId
         createdAt: new Date()
+        // restaurantId hata diya - path se hi pata chal gaya
       });
 
       toast.success('Item added successfully!');
@@ -72,15 +81,16 @@ export default function AddItemModal({ isOpen, onClose }) {
       setImagePreview('');
       onClose();
     } catch (error) {
-      toast.error(error.message);
+      console.error("Add item error:", error);
+      toast.error("Failed: " + error.message);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 max-h- overflow-y-auto">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Add Menu Item</h2>
           <button onClick={onClose}>
@@ -95,7 +105,7 @@ export default function AddItemModal({ isOpen, onClose }) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dine-500 outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
               required
             />
           </div>
@@ -106,7 +116,7 @@ export default function AddItemModal({ isOpen, onClose }) {
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dine-500 outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
               required
             />
           </div>
@@ -116,7 +126,7 @@ export default function AddItemModal({ isOpen, onClose }) {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dine-500 outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
             >
               <option>Main Course</option>
               <option>Starter</option>
@@ -142,7 +152,7 @@ export default function AddItemModal({ isOpen, onClose }) {
               />
               <label
                 htmlFor="image-upload"
-                className="cursor-pointer text-dine-600 font-semibold hover:underline"
+                className="cursor-pointer text-red-600 font-semibold hover:underline"
               >
                 {imagePreview? 'Change Image' : 'Choose Image'}
               </label>
@@ -153,9 +163,9 @@ export default function AddItemModal({ isOpen, onClose }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-dine-500 to-orange-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-70"
+            className="w-full bg-gradient-to-r from-red-500 to-orange-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-70"
           >
-            {loading? 'Uploading...' : 'Add Item'}
+            {loading? 'Adding...' : 'Add Item'}
           </button>
         </form>
       </div>
