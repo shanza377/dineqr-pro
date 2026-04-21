@@ -115,7 +115,7 @@ export default function AdminSignup() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-dine-500 to-orange-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-dine-500 to-orange-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50 cursor-pointer"
           >
             {loading? 'Creating Account...' : 'Create Account'}
           </button>
