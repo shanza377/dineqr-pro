@@ -2,55 +2,50 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const DemoDashboard = () => {
-  // all data is hardcoded for demo purposes
-  const stats = { totalOrders: 47, revenue: 23400, menuItems: 12, tables: 8 };
-  const demoItems = [
-    { name: "Zinger Burger", price: 550, orders: 23 },
-    { name: "Margherita Pizza", price: 1200, orders: 18 },
-    { name: "Fries", price: 250, orders: 31 },
-  ];
-
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="bg-yellow-100 border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-6">
-        <strong>DEMO MODE:</strong> Ye preview hai. Apna data dekhne ke liye <Link to="/login" className="underline font-bold">Sign Up karein</Link>
-      </div>
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-yellow-200 border-l-4 border-yellow-600 text-yellow-900 p-4 mb-6 rounded">
+          <p className="font-bold">DEMO MODE ACTIVE</p>
+          <p>Ye DineQR Pro ka live preview hai. Apna restaurant add karne ke liye <Link to="/login" className="underline font-bold">Sign Up karein</Link></p>
+        </div>
 
-      <h1 className="text-3xl font-bold mb-6">Dashboard Overview</h1>
-      
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Total Orders</p>
-          <p className="text-2xl font-bold">{stats.totalOrders}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Revenue</p>
-          <p className="text-2xl font-bold">Rs. {stats.revenue}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Menu Items</p>
-          <p className="text-2xl font-bold">{stats.menuItems}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Tables</p>
-          <p className="text-2xl font-bold">{stats.tables}</p>
-        </div>
-      </div>
-
-      <h2 className="text-2xl font-bold mb-4">Top Selling Items</h2>
-      <div className="bg-white rounded shadow p-4">
-        {demoItems.map(item => (
-          <div key={item.name} className="flex justify-between py-2 border-b">
-            <span>{item.name} - Rs. {item.price}</span>
-            <span className="text-gray-500">{item.orders} orders</span>
+        <h1 className="text-3xl font-bold mb-6">Restaurant Dashboard - Demo</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <p className="text-gray-500">Aaj ke Orders</p>
+            <p className="text-3xl font-bold">47</p>
           </div>
-        ))}
-      </div>
+          <div className="bg-white p-6 rounded-lg shadow">
+            <p className="text-gray-500">Aaj ki Sale</p>
+            <p className="text-3xl font-bold">Rs. 23,400</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow">
+            <p className="text-gray-500">Menu Items</p>
+            <p className="text-3xl font-bold">12</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow">
+            <p className="text-gray-500">Active Tables</p>
+            <p className="text-3xl font-bold">8</p>
+          </div>
+        </div>
 
-      <div className="mt-8 text-center">
-        <Link to="/login" className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold">
-          Start Free Trial - Sign Up Now
-        </Link>
+        <div className="bg-white p-6 rounded-lg shadow mb-6">
+          <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+          <div className="flex gap-4">
+            <button disabled className="bg-red-200 text-red-800 px-4 py-2 rounded cursor-not-allowed">Add Menu Item</button>
+            <button disabled className="bg-blue-200 text-blue-800 px-4 py-2 rounded cursor-not-allowed">Generate QR Code</button>
+            <button disabled className="bg-green-200 text-green-800 px-4 py-2 rounded cursor-not-allowed">View Orders</button>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">*Ye buttons signup ke baad active honge</p>
+        </div>
+
+        <div className="text-center">
+          <Link to="/login" className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold text-lg">
+            Free Trial Shuru Karein →
+          </Link>
+        </div>
       </div>
     </div>
   );
