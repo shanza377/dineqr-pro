@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+Import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, Minus, ShoppingCart, X, CheckCircle } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, X, CheckCircle, Import } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 const PublicMenu = () => {
