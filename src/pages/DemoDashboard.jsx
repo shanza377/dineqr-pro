@@ -7,7 +7,7 @@ const DemoDashboard = () => {
       <div className="max-w-6xl mx-auto">
         <div className="bg-yellow-200 border-l-4 border-yellow-600 text-yellow-900 p-4 mb-6 rounded">
           <p className="font-bold">DEMO MODE ACTIVE</p>
-          <p>Live preview of DineQR Pro <Link to="/login" className="underline font-bold">Sign Up karein</Link></p>
+          <p>Live preview of DineQR Pro <Link to="/login" className="underline font-bold">Sign Up</Link></p>
         </div>
 
         <h1 className="text-3xl font-bold mb-6">Restaurant Dashboard - Demo</h1>
