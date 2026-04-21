@@ -32,11 +32,14 @@ export default function AdminDashboard() {
 
   // Step 2: Only fetch orders after we have a user
   useEffect(() => {
-    if (!user) return; // ← Guard clause: Don't run if user is null
+    if (loadingAuth || !user) return; // ← Guard clause: Don't run if user is null
+    if (!user?.uid) {
+      setLoading(false); // No user, stop loading spinner
+      return;
+    }
 
     const ordersQuery = query(
-      collection(db, 'orders'),
-      where('restaurantId', '==', user.uid),
+      collection(db, 'restaurants', user.uid, 'orders'),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
