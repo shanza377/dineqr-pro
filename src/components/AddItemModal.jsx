@@ -17,7 +17,7 @@ export default function AddItemModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handleImageChange = (e) => {
-    const file = e.target.files;
+    const file = e.target.files[0]; // ✅ FIXED
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
@@ -61,7 +61,6 @@ export default function AddItemModal({ isOpen, onClose }) {
         toast.success('Image uploaded!', { id: 'upload' });
       }
 
-      // ✅ YAHAN FIX HAI - SAHI SUBCOLLECTION PATH
       const menuRef = collection(db, 'restaurants', user.uid, 'menuItems');
 
       await addDoc(menuRef, {
@@ -70,7 +69,6 @@ export default function AddItemModal({ isOpen, onClose }) {
         category,
         imageUrl,
         createdAt: new Date()
-        // restaurantId hata diya - path se hi pata chal gaya
       });
 
       toast.success('Item added successfully!');
@@ -90,7 +88,7 @@ export default function AddItemModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 max-h- overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Add Menu Item</h2>
           <button onClick={onClose}>
