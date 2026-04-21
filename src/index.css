@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dine-50: #fff1f0;
+  --color-dine-100: #ffdfdc;
+  --color-dine-200: #ffc5bf;
+  --color-dine-300: #ff9e94;
+  --color-dine-400: #ff6859;
+  --color-dine-500: #ff3d29;
+  --color-dine-600: #ed1f0b;
+  --color-dine-700: #c81506;
+  --color-dine-800: #a5170a;
+  --color-dine-900: #88190f;
+}
