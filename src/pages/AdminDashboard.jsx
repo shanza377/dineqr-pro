@@ -22,13 +22,8 @@ export default function AdminDashboard() {
   // Step 1: Listen for auth state changes first
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser); // Set user when Firebase confirms
-      } else {
-        navigate('/admin/login'); // Redirect if not logged in
-      }
+      
     });
-
     return () => unsubscribeAuth();
   }, [navigate]);
 
