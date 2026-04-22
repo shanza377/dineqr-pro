@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { updateEmail, updatePassword, onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const IMGBB_API_KEY = 'f56d3452792b38bb6ef9144c9e1c86ea'; // Paste your ImgBB API key here
+const IMGBB_API_KEY = 'f56d3452792b38bb6ef9144c9e1c86ea';
 
 export default function Settings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [restaurantId, setRestaurantId] = useState(null); 
 
   const [restaurantName, setRestaurantName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,19 +23,27 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // User ka data fetch karo
+  
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         setEmail(currentUser.email);
 
-        const restaurantDoc = await getDoc(doc(db, 'restaurants', currentUser.uid));
-        if (restaurantDoc.exists()) {
+        
+        const q = query(collection(db, 'restaurants'), where('ownerId', '==', currentUser.uid));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const restaurantDoc = snapshot.docs[0];
+          setRestaurantId(restaurantDoc.id); 
+
           const data = restaurantDoc.data();
-          setRestaurantName(data.restaurantName || '');
+          setRestaurantName(data.name || data.restaurantName || ''); 
           setCurrentLogo(data.logoUrl || '');
           setLogoPreview(data.logoUrl || '');
+        } else {
+          toast.error("Restaurant not found. Create one first.");
         }
       } else {
         navigate('/admin/login');
@@ -64,57 +73,64 @@ export default function Settings() {
   };
 
   const handleSave = async (e) => {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    let logoUrl = currentLogo;
-
-    // 1. Logo upload
-    if (logoFile) {
-      toast.loading('Uploading logo...', { id: 'logo' });
-      logoUrl = await uploadToImgBB(logoFile);
-      toast.success('Logo uploaded!', { id: 'logo' });
+    
+    if (!restaurantId) {
+      toast.error("Restaurant ID not found");
+      setLoading(false);
+      return;
     }
 
-    // 2. use SetDoc with merge to update restaurant profile
-    await setDoc(doc(db, 'restaurants', user.uid), {
-      restaurantName,
-      logoUrl,
-      email,
-      ownerId: user.uid,
-      updatedAt: new Date()
-    }, { merge: true }); 
+    try {
+      let logoUrl = currentLogo;
 
-    // 3. Email update 
-    if (email!== user.email) {
-      await updateEmail(user, email);
-      toast.success('Email updated!');
-    }
-
-    // 4. Password update 
-    if (newPassword) {
-      if (newPassword!== confirmPassword) {
-        throw new Error('Passwords do not match');
+      // 1. Logo upload
+      if (logoFile) {
+        toast.loading('Uploading logo...', { id: 'logo' });
+        logoUrl = await uploadToImgBB(logoFile);
+        toast.success('Logo uploaded!', { id: 'logo' });
       }
-      if (newPassword.length < 6) {
-        throw new Error('Password must be 6+ characters');
+
+      // 2. use restaurantId, NOT user.uid
+      await setDoc(doc(db, 'restaurants', restaurantId), { 
+        name: restaurantName, 
+        logoUrl,
+        email,
+        ownerId: user.uid,
+        updatedAt: new Date()
+      }, { merge: true });
+
+      // 3. Email update
+      if (email!== user.email) {
+        await updateEmail(user, email);
+        toast.success('Email updated!');
       }
-      await updatePassword(user, newPassword);
-      toast.success('Password updated!');
-      setNewPassword('');
-      setConfirmPassword('');
+
+      // 4. Password update
+      if (newPassword) {
+        if (newPassword!== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        if (newPassword.length < 6) {
+          throw new Error('Password must be 6+ characters');
+        }
+        await updatePassword(user, newPassword);
+        toast.success('Password updated!');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+
+      toast.success('Profile updated successfully!');
+      setCurrentLogo(logoUrl);
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error(error.message);
     }
 
-    toast.success('Profile updated successfully!');
-    setCurrentLogo(logoUrl);
-  } catch (error) {
-    toast.error(error.message);
-  }
-
-  setLoading(false);
-};
-
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -168,7 +184,7 @@ export default function Settings() {
                 type="text"
                 value={restaurantName}
                 onChange={(e) => setRestaurantName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-dine-500 outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
                 required
               />
             </div>
@@ -180,7 +196,7 @@ export default function Settings() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-dine-500 outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
                 required
               />
             </div>
@@ -194,7 +210,7 @@ export default function Settings() {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-dine-500 outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
                     placeholder="Leave blank to keep current"
                   />
                 </div>
@@ -204,7 +220,7 @@ export default function Settings() {
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-dine-500 outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
                     placeholder="Confirm new password"
                   />
                 </div>
@@ -213,8 +229,8 @@ export default function Settings() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-dine-500 to-orange-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-70 flex items-center justify-center gap-2"
+              disabled={loading ||!restaurantId} 
+              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-70 flex items-center justify-center gap-2"
             >
               <Save className="w-5 h-5" />
               {loading? 'Saving...' : 'Save Changes'}
