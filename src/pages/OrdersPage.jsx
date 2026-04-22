@@ -22,12 +22,12 @@ const AdminOrders = () => {
         if (!snapshot.empty) {
           setRestaurantId(snapshot.docs[0].id);
         } else {
-          toast.error("Aapka restaurant nahi mila. Pehle restaurant banayein.");
+          toast.error("Restaurant not found for this user");
           setLoading(false);
         }
       } catch (error) {
         console.error("Restaurant fetch error:", error);
-        toast.error("Restaurant load nahi hua");
+        toast.error("Restaurant doesn't load");
         setLoading(false);
       }
     };
@@ -54,7 +54,7 @@ const AdminOrders = () => {
       setLoading(false);
     }, (error) => {
       console.error("Orders listener error:", error);
-      toast.error("Orders load karne me masla hua");
+      toast.error("Orders doesn't load");
       setLoading(false);
     });
 
@@ -80,15 +80,15 @@ const AdminOrders = () => {
 
   
   if (loadingAuth) {
-    return <div className="p-8 text-center">Auth check ho raha hai...</div>;
+    return <div className="p-8 text-center">checking auth...</div>;
   }
 
   if (!user) {
-    return <div className="p-8 text-center">Login karo pehle...</div>;
+    return <div className="p-8 text-center">First Login...</div>;
   }
 
   if (loading) {
-    return <div className="p-8 text-center">Orders load ho rahe hain...</div>;
+    return <div className="p-8 text-center">Loading Orders...</div>;
   }
 
   return (
@@ -97,7 +97,7 @@ const AdminOrders = () => {
 
       {orders.length === 0? (
         <div className="text-center py-10 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">Abhi koi order nahi hai 😊</p>
+          <p className="text-gray-500">Order not found yet 😊</p>
         </div>
       ) : (
         <div className="space-y-4">
