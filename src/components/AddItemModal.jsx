@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db, auth } from '../firebase';
+import { db } from '../firebase'; 
 import { collection, addDoc } from 'firebase/firestore';
 import { X, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ export default function AddItemModal({ isOpen, onClose, restaurantId }) {
   if (!isOpen) return null;
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0]; // ✅ FIXED
+    const file = e.target.files[0];
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
@@ -45,9 +45,9 @@ export default function AddItemModal({ isOpen, onClose, restaurantId }) {
     e.preventDefault();
     setLoading(true);
 
-    const user = auth.currentUser;
-    if (!user) {
-      toast.error("Please login first");
+    
+    if (!restaurantId) {
+      toast.error("Restaurant ID missing");
       setLoading(false);
       return;
     }
@@ -61,7 +61,8 @@ export default function AddItemModal({ isOpen, onClose, restaurantId }) {
         toast.success('Image uploaded!', { id: 'upload' });
       }
 
-      const menuRef = collection(db, 'restaurants', user.uid, 'menuItems');
+      
+      const menuRef = collection(db, 'restaurants', restaurantId, 'menuItems');
 
       await addDoc(menuRef, {
         name,
