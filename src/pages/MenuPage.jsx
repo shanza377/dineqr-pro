@@ -11,7 +11,8 @@ const MenuPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, loadingAuth] = useAuthState(auth);
-  const [restaurantId, setRestaurantId] = useState(null); 
+  const [restaurantId, setRestaurantId] = useState(null);
+  
 
   
   useEffect(() => {

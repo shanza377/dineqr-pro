@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 const IMGBB_API_KEY = 'f56d3452792b38bb6ef9144c9e1c86ea';
 
-export default function AddItemModal({ isOpen, onClose }) {
+export default function AddItemModal({ isOpen, onClose, restaurantId }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('Main Course');
