@@ -1,86 +1,76 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import AddItemModal from '../components/AddItemModal';
-import { Plus } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import toast, { Toaster } from 'react-hot-toast';
 
 const MenuPage = () => {
+  const [user, loadingAuth] = useAuthState(auth);
+  const [restaurantId, setRestaurantId] = useState(null); // ← YE ADD KAR
   const [menuItems, setMenuItems] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user] = useAuthState(auth); // useAuthState 
 
+  // Step 1: Pehle restaurantId nikalo
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
 
-    const menuRef = collection(db, 'restaurants', user.uid, 'menuItems');
-    const q = query(menuRef);
+    const fetchRestaurantId = async () => {
+      const q = query(collection(db, 'restaurants'), where('ownerId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        setRestaurantId(snapshot.docs[0].id); // ← A9Ty2ydESEkBHP5n4zG3 mile ga
+      }
+    };
+    fetchRestaurantId();
+  }, );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({
-        id: doc.id,
-       ...doc.data()
-      }));
+  // Step 2: Menu items lao
+  useEffect(() => {
+    if (loadingAuth ||!user ||!restaurantId) return; // ← Guard
+
+    const menuRef = collection(db, 'restaurants', restaurantId, 'menuItems'); // ← YE LINE THEEK KI
+    const unsubscribe = onSnapshot(menuRef, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id,...doc.data() }));
       setMenuItems(items);
-      setLoading(false);
-    }, (error) => {
-      console.error("Menu load error:", error);
-      toast.error("Menu load failed");
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user]); // user dependency
+  }, [user, loadingAuth, restaurantId]);
 
-  if (loading) {
-    return <div className="text-center py-20">Loading menu...</div>;
-  }
+  // Step 3: Item add karo
+  const handleAddItem = async (itemData) => {
+    if (!user ||!restaurantId) {
+      toast.error("Restaurant nahi mila");
+      return;
+    }
+
+    try {
+      const menuRef = collection(db, 'restaurants', restaurantId, 'menuItems'); // ← YE BHI THEEK KI
+      await addDoc(menuRef, {
+    ...itemData,
+        createdAt: new Date()
+      });
+      toast.success("Menu item added!");
+    } catch (error) {
+      console.error("Add item error:", error);
+      toast.error("Permission denied: " + error.message);
+    }
+  };
+
+  if (loadingAuth || loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <Toaster position="top-right" />
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Menu Items</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2 cursor-pointer"
-        >
-          <Plus size={20} />
-          Add New Item
-        </button>
-      </div>
+      <Toaster />
+      <h1>Menu Items</h1>
+      <button onClick={() => handleAddItem({ name: "Test Burger", price: 500 })}>
+        Add Test Item
+      </button>
 
-      {menuItems.length === 0? (
-        <div className="bg-white p-12 rounded-2xl border text-center">
-          <p className="text-gray-500 text-lg">No menu items yet</p>
-          <p className="text-gray-400 text-sm mt-2">Click "Add New Item" to get started</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {menuItems.map(item => (
-            <div key={item.id} className="bg-white rounded-2xl border p-4">
-              <img
-                src={item.imageUrl || 'https://via.placeholder.com/300'}
-                alt={item.name}
-                className="w-full h-40 object-cover rounded-lg mb-3"
-              />
-              <h3 className="font-bold text-lg">{item.name}</h3>
-              <p className="text-gray-600">{item.category}</p>
-              <p className="text-red-600 font-bold text-xl mt-2">Rs. {item.price}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <AddItemModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-      />
+      {menuItems.map(item => (
+        <div key={item.id}>{item.name} - Rs.{item.price}</div>
+      ))}
     </div>
   );
 };
