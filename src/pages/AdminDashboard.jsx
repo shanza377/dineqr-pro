@@ -29,7 +29,7 @@ export default function AdminDashboard() {
         if (!snapshot.empty) {
           setRestaurantId(snapshot.docs[0].id); 
         } else {
-          toast.error("Restaurant nahi mila. Pehle restaurant banayein.");
+          toast.error("Restaurant not found.");
           setLoading(false);
         }
       } catch (error) {

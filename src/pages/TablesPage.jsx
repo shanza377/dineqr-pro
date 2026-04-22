@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, deleteDoc, doc, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Plus, Trash2, QrCode, Loader2 } from 'lucide-react';
@@ -9,28 +9,45 @@ const TablesPage = () => {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, loadingAuth] = useAuthState(auth);
+  const [restaurantId, setRestaurantId] = useState(null); // ← YE ADD KIYA
 
+  // Step 1: Pehle restaurantId nikalo
   useEffect(() => {
-    
-    if (loadingAuth) return;
-    
-    
-    if (!user?.uid) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
+
+    const fetchRestaurantId = async () => {
+      try {
+        const q = query(collection(db, 'restaurants'), where('ownerId', '==', user.uid));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          setRestaurantId(snapshot.docs[0].id);
+        } else {
+          toast.error("Restaurant nahi mila");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Restaurant fetch error:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchRestaurantId();
+  }, );
+
+  // Step 2: Jab restaurantId mile tab tables lao
+  useEffect(() => {
+    if (loadingAuth ||!user ||!restaurantId) return; // ← Guard add kiya
 
     setLoading(true);
-    console.log("Fetching tables for user:", user.uid);
+    console.log("Fetching tables for restaurant:", restaurantId);
 
-    
-    const tablesRef = collection(db, 'restaurants', user.uid, 'tables');
+    const tablesRef = collection(db, 'restaurants', restaurantId, 'tables'); // ← YE LINE THEEK KI
     const q = query(tablesRef);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({
         id: doc.id,
-       ...doc.data()
+    ...doc.data()
       }));
       setTables(items);
       setLoading(false);
@@ -41,24 +58,22 @@ const TablesPage = () => {
     });
 
     return () => unsubscribe();
-  }, [user, loadingAuth]); 
+  }, [user, loadingAuth, restaurantId]); // ← restaurantId dependency add ki
 
   const handleAddTable = async () => {
-    if (!user?.uid) {
-      toast.error("Please login first");
+    if (!user ||!restaurantId) { // ← restaurantId check add kiya
+      toast.error("Restaurant nahi mila");
       return;
     }
 
     const tableNumber = tables.length + 1;
     try {
-      const tablesRef = collection(db, 'restaurants', user.uid, 'tables');
-      
+      const tablesRef = collection(db, 'restaurants', restaurantId, 'tables'); // ← YE BHI THEEK KI
       await addDoc(tablesRef, {
         tableNumber: tableNumber,
         name: `Table ${tableNumber}`,
         createdAt: new Date()
       });
-      
       toast.success(`Table ${tableNumber} added!`);
     } catch (error) {
       console.error("Add table error:", error);
@@ -67,12 +82,12 @@ const TablesPage = () => {
   };
 
   const handleDeleteTable = async (tableId, tableName) => {
-    if (!user?.uid) return;
-    
+    if (!user ||!restaurantId) return; // ← restaurantId check add kiya
+
     if (!window.confirm(`Delete ${tableName}?`)) return;
 
     try {
-      await deleteDoc(doc(db, 'restaurants', user.uid, 'tables', tableId));
+      await deleteDoc(doc(db, 'restaurants', restaurantId, 'tables', tableId)); // ← YE BHI THEEK KI
       toast.success("Table deleted!");
     } catch (error) {
       console.error("Delete table error:", error);
@@ -147,9 +162,9 @@ const TablesPage = () => {
                 <QrCode className="w-16 h-16 mx-auto text-gray-400 mb-2" />
                 <p className="text-sm font-semibold text-gray-700">QR Code</p>
                 <p className="text-xs text-gray-400 mt-1 break-all">
-                  /menu/{user.uid}/{table.id}
+                  /menu/{restaurantId}/{table.id} {/* ← YE BHI THEEK KAR DIYA */}
                 </p>
-                <button 
+                <button
                   className="mt-3 text-xs bg-gray-200 px-3 py-1 rounded-full text-gray-600 hover:bg-gray-300"
                   onClick={() => toast("QR Download coming soon!")}
                 >
