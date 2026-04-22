@@ -1,151 +1,158 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, updateDoc, orderBy } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { CheckCircle, Clock, ChefHat, Bell } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '../firebase'; 
+import { collection, query, where, getDocs, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 
-const OrdersPage = () => {
+const AdminOrders = () => {
+  const [user, loadingAuth] = useAuthState(auth);
+  const [restaurantId, setRestaurantId] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const user = auth.currentUser;
 
+  
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
 
-    // Real-time listener for orders collection
-    // Order by newest first
-    const q = query(
-      collection(db, 'orders'),
-      where('restaurantId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
+    const fetchRestaurantId = async () => {
+      try {
+        const q = query(collection(db, 'restaurants'), where('ownerId', '==', user.uid));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          setRestaurantId(snapshot.docs[0].id);
+        } else {
+          toast.error("Aapka restaurant nahi mila. Pehle restaurant banayein.");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Restaurant fetch error:", error);
+        toast.error("Restaurant load nahi hua");
+        setLoading(false);
+      }
+    };
+
+    fetchRestaurantId();
+  }, );
+
+  
+  useEffect(() => {
+    
+    if (loadingAuth ||!user ||!restaurantId) return;
+
+    setLoading(true);
+    const ordersRef = collection(db, `restaurants/${restaurantId}/orders`);
+    const q = query(ordersRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const ordersData = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+      ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() 
       }));
       setOrders(ordersData);
       setLoading(false);
+    }, (error) => {
+      console.error("Orders listener error:", error);
+      toast.error("Orders load karne me masla hua");
+      setLoading(false);
     });
 
+    
     return () => unsubscribe();
-  }, ); // Add user.uid dependency
+  }, [user, loadingAuth, restaurantId]);
 
-  // Update order status: Pending -> Preparing -> Completed
+  
   const updateOrderStatus = async (orderId, newStatus) => {
+    if (!restaurantId) return;
+
     try {
-      const orderRef = doc(db, 'orders', orderId);
+      const orderRef = doc(db, `restaurants/${restaurantId}/orders`, orderId);
       await updateDoc(orderRef, {
         status: newStatus
       });
-      toast.success(`Order marked as ${newStatus}`);
+      toast.success(`Order ${newStatus} kar diya`);
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to update order status');
+      console.error("Status update error:", error);
+      toast.error("Status update nahi hua");
     }
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Pending': return 'bg-yellow-100 text-yellow-800';
-      case 'Preparing': return 'bg-blue-100 text-blue-800';
-      case 'Completed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  
+  if (loadingAuth) {
+    return <div className="p-8 text-center">Auth check ho raha hai...</div>;
+  }
 
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'Pending': return <Bell size={16} />;
-      case 'Preparing': return <ChefHat size={16} />;
-      case 'Completed': return <CheckCircle size={16} />;
-      default: return <Clock size={16} />;
-    }
-  };
+  if (!user) {
+    return <div className="p-8 text-center">Login karo pehle...</div>;
+  }
 
   if (loading) {
-    return <div className="text-center py-20">Loading orders...</div>;
+    return <div className="p-8 text-center">Orders load ho rahe hain...</div>;
   }
 
   return (
-    <div>
-      <Toaster position="top-right" />
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Live Orders</h1>
-        <div className="text-sm text-gray-500">
-          {orders.filter(o => o.status === 'Pending').length} Pending orders
-        </div>
-      </div>
+    <div className="p-4 md:p-8">
+      <h1 className="text-2xl font-bold mb-6">Live Orders</h1>
 
       {orders.length === 0? (
-        <div className="bg-white p-12 rounded-2xl border text-center">
-          <ChefHat size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 text-lg">No orders yet</p>
-          <p className="text-gray-400 text-sm mt-2">Orders will appear here when customers place them</p>
+        <div className="text-center py-10 bg-gray-50 rounded-lg">
+          <p className="text-gray-500">Abhi koi order nahi hai 😊</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {orders.map(order => (
-            <div key={order.id} className="bg-white rounded-2xl border p-6">
-              <div className="flex justify-between items-start mb-4">
+          {orders.map((order) => (
+            <div key={order.id} className="bg-white p-4 rounded-lg shadow border">
+              <div className="flex justify-between items-start mb-2">
                 <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="font-bold text-xl">Order #{order.id.slice(-6).toUpperCase()}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      {order.status}
-                    </span>
-                  </div>
+                  <p className="font-bold">Table: {order.tableName || order.tableId}</p>
                   <p className="text-sm text-gray-500">
-                    Table: {order.tableName} • {order.createdAt?.toDate().toLocaleTimeString()}
+                    {order.createdAt? new Date(order.createdAt).toLocaleString() : 'Abhi ka'}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold">Rs. {order.totalAmount}</p>
-                  <p className="text-xs text-gray-500">{order.items.length} items</p>
-                </div>
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold
+                  ${order.status === 'pending'?'bg-yellow-200 text-yellow-800' : ''}
+                  ${order.status === 'preparing'?'bg-blue-200 text-blue-800' : ''}
+                  ${order.status === 'completed'?'bg-green-200 text-green-800' : ''}
+                  ${order.status === 'cancelled'?'bg-red-200 text-red-800' : ''}
+                `}>
+                  {order.status}
+                </span>
               </div>
 
-              {/* Order Items List */}
-              <div className="border-t border-b py-3 mb-4 space-y-2">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <span>{item.quantity}x {item.name}</span>
-                    <span className="text-gray-600">Rs. {item.price * item.quantity}</span>
+              <div className="border-t my-3"></div>
+
+              <div className="space-y-1 mb-3">
+                {order.items?.map((item, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{item.name} x {item.quantity}</span>
+                    <span>Rs. {item.price * item.quantity}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 justify-end">
-                {order.status === 'Pending' && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, 'Preparing')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                  >
-                    <ChefHat size={18} />
-                    Start Preparing
-                  </button>
-                )}
-                {order.status === 'Preparing' && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, 'Completed')}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-                  >
-                    <CheckCircle size={18} />
-                    Mark Completed
-                  </button>
-                )}
-                {order.status === 'Completed' && (
-                  <span className="px-4 py-2 text-green-700 font-medium flex items-center gap-2">
-                    <CheckCircle size={18} />
-                    Completed
-                  </span>
-                )}
+              <div className="border-t my-3"></div>
+
+              <div className="flex justify-between items-center">
+                <p className="font-bold">Total: Rs. {order.totalAmount}</p>
+                <div className="space-x-2">
+                  {order.status === 'pending' && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, 'preparing')}
+                      className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+                    >
+                      Preparing
+                    </button>
+                  )}
+                  {order.status === 'preparing' && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, 'completed')}
+                      className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                    >
+                      Complete
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -155,4 +162,4 @@ const OrdersPage = () => {
   );
 };
 
-export default OrdersPage;
+export default AdminOrders;
