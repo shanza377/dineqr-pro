@@ -10,7 +10,6 @@ import toast from 'react-hot-toast'; // ← You used toast but didn't import it
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [user, loadingAuth] = useAuthState(auth); 
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({ totalRevenue: 0, totalOrders: 0, avgOrder: 0 });
