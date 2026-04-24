@@ -6,7 +6,7 @@ import { Plus, Minus, ShoppingCart, X, CheckCircle, Loader2, Utensils } from 'lu
 import toast, { Toaster } from 'react-hot-toast';
 
 const PublicMenu = () => {
-  const { restaurantId, tableId } = useParams(); // URL done
+  const { restaurantId, tableId } = useParams(); 
   const [restaurant, setRestaurant] = useState(null);
   const [table, setTable] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
@@ -84,7 +84,7 @@ const PublicMenu = () => {
         tableName: table?.name || `Table ${table?.tableNumber}`,
         items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
         total: totalAmount,
-        status: 'Pending',
+        status: 'pending',
         createdAt: serverTimestamp()
       });
       setOrderPlaced(true);

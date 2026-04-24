@@ -5,20 +5,20 @@ import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { UtensilsCrossed, LogOut, TrendingUp, ShoppingBag, DollarSign } from 'lucide-react';
+import { UtensilsCrossed, LogOut, TrendingUp, ShoppingBag, DollarSign, Store } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [user, loadingAuth] = useAuthState(auth);
-  const [restaurantId, setRestaurantId] = useState(null); 
+  const [restaurantId, setRestaurantId] = useState(null);
+  const [restaurantName, setRestaurantName] = useState('Loading...');
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({ totalRevenue: 0, totalOrders: 0, avgOrder: 0 });
   const [loading, setLoading] = useState(true);
 
   const COLORS = ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5', '#ea580c'];
 
-  
   useEffect(() => {
     if (!user) return;
 
@@ -27,7 +27,9 @@ export default function AdminDashboard() {
         const q = query(collection(db, 'restaurants'), where('ownerId', '==', user.uid));
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
-          setRestaurantId(snapshot.docs[0].id); 
+          const doc = snapshot.docs[0];
+          setRestaurantId(doc.id);
+          setRestaurantName(doc.data().name || 'My Restaurant');
         } else {
           toast.error("Restaurant not found.");
           setLoading(false);
@@ -41,13 +43,11 @@ export default function AdminDashboard() {
     fetchRestaurantId();
   }, );
 
-  
   useEffect(() => {
-    
     if (loadingAuth ||!user ||!restaurantId) return;
 
     const ordersQuery = query(
-      collection(db, 'restaurants', restaurantId, 'orders'), 
+      collection(db, 'restaurants', restaurantId, 'orders'),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
     const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
       const ordersData = snapshot.docs.map(doc => ({
         id: doc.id,
-     ...doc.data(),
+       ...doc.data(),
         createdAt: doc.data().createdAt?.toDate()
       }));
       setOrders(ordersData);
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
     });
 
     return () => unsubscribeOrders();
-  }, [user, loadingAuth, restaurantId]); 
+  }, [user, loadingAuth, restaurantId]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -109,9 +109,9 @@ export default function AdminDashboard() {
     });
 
     return Object.entries(itemCounts)
-.map(([name, count]) => ({ name, value: count }))
-.sort((a, b) => b.value - a.value)
-.slice(0, 5);
+     .map(([name, count]) => ({ name, value: count }))
+     .sort((a, b) => b.value - a.value)
+     .slice(0, 5);
   };
 
   if (loadingAuth || loading) {
@@ -128,10 +128,10 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-              <UtensilsCrossed className="w-6 h-6 text-white" />
+              <Store className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">DineQR Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{restaurantName}</h1>
               <p className="text-sm text-gray-600">{user?.email}</p>
             </div>
           </div>
