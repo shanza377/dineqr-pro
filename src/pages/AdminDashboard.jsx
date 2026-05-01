@@ -1,53 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { useAuthState } from 'react-firebase-hooks/auth';
+import React, { useState, useEffect, useRef } from 'react'; 
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { UtensilsCrossed, LogOut, TrendingUp, ShoppingBag, DollarSign, Store } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { TrendingUp, ShoppingBag, DollarSign, Bell } from 'lucide-react'; 
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const [user, loadingAuth] = useAuthState(auth);
-  const [restaurantId, setRestaurantId] = useState(null);
-  const [restaurantName, setRestaurantName] = useState('Loading...');
+  const { currentUser } = useAuth();
   const [orders, setOrders] = useState([]);
+  const audioRef = useRef(null); 
+  const prevOrderCount = useRef(0); 
+  const isFirstLoad = useRef(true); 
   const [stats, setStats] = useState({ totalRevenue: 0, totalOrders: 0, avgOrder: 0 });
   const [loading, setLoading] = useState(true);
 
   const COLORS = ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5', '#ea580c'];
 
   useEffect(() => {
-    if (!user) return;
-
-    const fetchRestaurantId = async () => {
-      try {
-        const q = query(collection(db, 'restaurants'), where('ownerId', '==', user.uid));
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          const doc = snapshot.docs[0];
-          setRestaurantId(doc.id);
-          setRestaurantName(doc.data().name || 'My Restaurant');
-        } else {
-          toast.error("Restaurant not found.");
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Restaurant fetch error:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchRestaurantId();
-  }, );
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioRef.current.volume = 0.5; 
+  }, []);
 
   useEffect(() => {
-    if (loadingAuth ||!user ||!restaurantId) return;
+    if (!currentUser?.uid) {
+      setLoading(false);
+      return;
+    }
+
+    console.log('Fetching orders for UID:', currentUser.uid);
 
     const ordersQuery = query(
-      collection(db, 'restaurants', restaurantId, 'orders'),
+      collection(db, 'orders'),
+      where('restaurantId', '==', currentUser.uid),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
@@ -55,31 +40,44 @@ export default function AdminDashboard() {
     const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
       const ordersData = snapshot.docs.map(doc => ({
         id: doc.id,
-       ...doc.data(),
+      ...doc.data(),
         createdAt: doc.data().createdAt?.toDate()
       }));
+
+      console.log('Dashboard Orders fetched:', ordersData);
+
+      const pendingOrders = ordersData.filter(o => o.status === 'pending');
+
+      if (!isFirstLoad.current && pendingOrders.length > prevOrderCount.current) {
+        audioRef.current?.play().catch(e => console.log('Audio play failed:', e));
+        toast.success('🔔 New order received!', {
+          icon: '🍽️',
+          duration: 4000,
+        });
+      }
+
+      prevOrderCount.current = pendingOrders.length;
+      isFirstLoad.current = false;
+
       setOrders(ordersData);
 
-      const revenue = ordersData.reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0);
+      const completedOrders = ordersData.filter(o => o.status === 'completed' || o.status === 'served');
+      const revenue = completedOrders.reduce((sum, order) => sum + (order.totalAmount || order.total || 0), 0);
+
       setStats({
         totalRevenue: revenue,
         totalOrders: ordersData.length,
-        avgOrder: ordersData.length > 0? Math.round(revenue / ordersData.length) : 0
+        avgOrder: completedOrders.length > 0? Math.round(revenue / completedOrders.length) : 0
       });
       setLoading(false);
     }, (error) => {
-      console.error("Firestore Error:", error);
+      console.error("Dashboard error:", error);
+      toast.error("Error loading dashboard: " + error.message);
       setLoading(false);
-      toast.error('Dashboard load failed: ' + error.message);
     });
 
     return () => unsubscribeOrders();
-  }, [user, loadingAuth, restaurantId]);
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigate('/admin/login');
-  };
+  }, [currentUser]);
 
   const getOrdersByDay = () => {
     const last7Days = {};
@@ -89,14 +87,12 @@ export default function AdminDashboard() {
       const key = d.toLocaleDateString('en-US', { weekday: 'short' });
       last7Days[key] = 0;
     }
-
     orders.forEach(order => {
       if (order.createdAt) {
         const day = order.createdAt.toLocaleDateString('en-US', { weekday: 'short' });
         if (last7Days[day]!== undefined) last7Days[day]++;
       }
     });
-
     return Object.keys(last7Days).map(day => ({ name: day, orders: last7Days[day] }));
   };
 
@@ -104,45 +100,35 @@ export default function AdminDashboard() {
     const itemCounts = {};
     orders.forEach(order => {
       order.items?.forEach(item => {
-        itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity;
+        const qty = item.qty || item.quantity || 1;
+        itemCounts[item.name] = (itemCounts[item.name] || 0) + qty;
       });
     });
-
     return Object.entries(itemCounts)
-     .map(([name, count]) => ({ name, value: count }))
-     .sort((a, b) => b.value - a.value)
-     .slice(0, 5);
+    .map(([name, count]) => ({ name, value: count }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
   };
 
-  if (loadingAuth || loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-              <Store className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{restaurantName}</h1>
-              <p className="text-sm text-gray-600">{user?.email}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-xl transition">
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
-      </header>
+    <div className="p-6">
+      <Toaster position="top-center" />
+      <div className="max-w-7xl mx-auto">
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          
+        </div>
+
+        {/* STATS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-2xl border border-gray-200">
             <div className="flex items-center justify-between mb-2">
@@ -150,8 +136,8 @@ export default function AdminDashboard() {
               <DollarSign className="w-8 h-8 text-green-500" />
             </div>
             <p className="text-4xl font-bold text-gray-900">Rs. {stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">Completed orders only</p>
           </div>
-
           <div className="bg-white p-6 rounded-2xl border border-gray-200">
             <div className="flex items-center justify-between mb-2">
               <p className="text-gray-600 font-semibold">Total Orders</p>
@@ -159,7 +145,6 @@ export default function AdminDashboard() {
             </div>
             <p className="text-4xl font-bold text-gray-900">{stats.totalOrders}</p>
           </div>
-
           <div className="bg-white p-6 rounded-2xl border border-gray-200">
             <div className="flex items-center justify-between mb-2">
               <p className="text-gray-600 font-semibold">Avg Order Value</p>
@@ -169,6 +154,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white p-6 rounded-2xl border border-gray-200">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Orders This Week</h3>
@@ -182,13 +168,20 @@ export default function AdminDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-
           <div className="bg-white p-6 rounded-2xl border border-gray-200">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Top 5 Items</h3>
             {getTopItems().length > 0? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={getTopItems()} cx="50%" cy="50%" labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={100} fill="#8884d8" dataKey="value">
+                  <Pie
+                    data={getTopItems()}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={100}
+                    dataKey="value"
+                  >
                     {getTopItems().map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -197,13 +190,12 @@ export default function AdminDashboard() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-gray-400">
-                No orders yet
-              </div>
+              <div className="h-[300px] flex items-center justify-center text-gray-400">No orders yet</div>
             )}
           </div>
         </div>
 
+        {/* RECENT ORDERS TABLE */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-xl font-bold text-gray-900">Recent Orders</h3>
@@ -221,6 +213,7 @@ export default function AdminDashboard() {
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Order ID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Time</th>
                   </tr>
                 </thead>
@@ -229,9 +222,19 @@ export default function AdminDashboard() {
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm font-mono text-gray-600">#{order.id.slice(0, 6)}</td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                        {order.items?.map(i => `${i.name} x${i.qty || i.quantity}`).join(', ')}
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-orange-600">Rs. {order.totalAmount || order.total}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          order.status === 'completed' || order.status === 'served'? 'bg-green-100 text-green-700' :
+                          order.status === 'preparing'? 'bg-blue-100 text-blue-700' :
+                          order.status === 'ready'? 'bg-orange-100 text-orange-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {order.createdAt?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                       </td>
@@ -242,7 +245,7 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

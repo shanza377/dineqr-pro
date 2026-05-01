@@ -20,7 +20,6 @@ const MenuPage = () => {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
 
-  // DEBUG 1: Check auth state
   useEffect(() => {
     console.log('1. MenuPage loaded, checking auth...');
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -37,7 +36,7 @@ const MenuPage = () => {
     return () => unsubscribe();
   }, []);
 
-  // DEBUG 2: Check menu fetch
+  
   useEffect(() => {
     console.log('4. restaurantId changed:', restaurantId);
     if (!restaurantId) {
@@ -93,7 +92,7 @@ const MenuPage = () => {
           name: dishName.trim(),
           price: Number(price),
           category: category,
-          image: imageUrl,
+          imageUrl: imageUrl,
           updatedAt: serverTimestamp()
         });
         toast.success('Item updated!');

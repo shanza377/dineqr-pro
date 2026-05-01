@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'; 
 import { updateEmail, updatePassword, onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, Save } from 'lucide-react';
@@ -12,7 +12,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [restaurantId, setRestaurantId] = useState(null); 
+  const [restaurantId, setRestaurantId] = useState(null);
 
   const [restaurantName, setRestaurantName] = useState('');
   const [email, setEmail] = useState('');
@@ -23,27 +23,39 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
+        console.log("STEP 1: User UID =", currentUser.uid);
         setUser(currentUser);
         setEmail(currentUser.email);
 
-        
-        const q = query(collection(db, 'restaurants'), where('ownerId', '==', currentUser.uid));
-        const snapshot = await getDocs(q);
+        const restaurantDocRef = doc(db, 'restaurants', currentUser.uid);
+        console.log("STEP 2: Checking doc =", restaurantDocRef.path);
 
-        if (!snapshot.empty) {
-          const restaurantDoc = snapshot.docs[0];
-          setRestaurantId(restaurantDoc.id); 
+        try {
+          const restaurantDoc = await getDoc(restaurantDocRef);
+          console.log("STEP 3: Doc exists? =", restaurantDoc.exists());
 
-          const data = restaurantDoc.data();
-          setRestaurantName(data.name || data.restaurantName || ''); 
-          setCurrentLogo(data.logoUrl || '');
-          setLogoPreview(data.logoUrl || '');
-        } else {
-          toast.error("Restaurant not found. Create one first.");
+          if (restaurantDoc.exists()) {
+            console.log("STEP 4: Doc data =", restaurantDoc.data());
+            setRestaurantId(currentUser.uid);
+            const data = restaurantDoc.data();
+            setRestaurantName(data.name || '');
+            setCurrentLogo(data.logoUrl || '');
+            setLogoPreview(data.logoUrl || '');
+          } else {
+            console.log("STEP 5: Creating new doc for UID:", currentUser.uid);
+            await setDoc(restaurantDocRef, {
+              ownerId: currentUser.uid,
+              createdAt: serverTimestamp()
+            });
+            setRestaurantId(currentUser.uid);
+            toast.success("Restaurant created! Ab name/logo save karo");
+          }
+        } catch (err) {
+          console.error("Firebase Error:", err);
+          toast.error("Firebase se data nahi mila. Rules check karo");
         }
       } else {
         navigate('/admin/login');
@@ -76,7 +88,6 @@ export default function Settings() {
     e.preventDefault();
     setLoading(true);
 
-    
     if (!restaurantId) {
       toast.error("Restaurant ID not found");
       setLoading(false);
@@ -86,29 +97,25 @@ export default function Settings() {
     try {
       let logoUrl = currentLogo;
 
-      // 1. Logo upload
       if (logoFile) {
         toast.loading('Uploading logo...', { id: 'logo' });
         logoUrl = await uploadToImgBB(logoFile);
         toast.success('Logo uploaded!', { id: 'logo' });
       }
 
-      // 2. use restaurantId, NOT user.uid
-      await setDoc(doc(db, 'restaurants', restaurantId), { 
-        name: restaurantName, 
+      await setDoc(doc(db, 'restaurants', restaurantId), {
+        name: restaurantName,
         logoUrl,
         email,
         ownerId: user.uid,
-        updatedAt: new Date()
+        updatedAt: serverTimestamp()
       }, { merge: true });
 
-      // 3. Email update
       if (email!== user.email) {
         await updateEmail(user, email);
         toast.success('Email updated!');
       }
 
-      // 4. Password update
       if (newPassword) {
         if (newPassword!== confirmPassword) {
           throw new Error('Passwords do not match');
@@ -147,7 +154,6 @@ export default function Settings() {
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Restaurant Settings</h1>
 
           <form onSubmit={handleSave} className="space-y-6">
-            {/* Logo Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Restaurant Logo</label>
               <div className="flex items-center gap-4">
@@ -177,7 +183,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Restaurant Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Restaurant Name</label>
               <input
@@ -189,7 +194,6 @@ export default function Settings() {
               />
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
               <input
@@ -229,7 +233,7 @@ export default function Settings() {
 
             <button
               type="submit"
-              disabled={loading ||!restaurantId} 
+              disabled={loading ||!restaurantId}
               className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-70 flex items-center justify-center gap-2"
             >
               <Save className="w-5 h-5" />
