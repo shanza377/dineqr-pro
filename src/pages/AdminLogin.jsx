@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth'; // signOut add kiya
 import { auth } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { UtensilsCrossed, Mail, Lock } from 'lucide-react';
@@ -16,9 +16,21 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      await user.reload();
+      
+      if (!auth.currentUser.emailVerified) {
+        await signOut(auth); 
+        toast.error('Please verify your email first. Check your inbox!');
+        setLoading(false);
+        return; 
+      }
+
       toast.success('Logged in successfully!');
       navigate('/admin/dashboard');
+
     } catch (error) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         toast.error('Invalid email or password');
