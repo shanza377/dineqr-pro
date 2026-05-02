@@ -21,6 +21,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 export const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpxvoaalx/image/upload";
-export const CLOUDINARY_UPLOAD_PRESET = "dineqr-pro_unsigned";
+export const CLOUDINARY_UPLOAD_PRESET = "dineqr-pro";
 
 export default app;
