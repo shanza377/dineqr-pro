@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage } from '../firebase';
+import { db, auth, CLOUDINARY_URL, CLOUDINARY_UPLOAD_PRESET } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Plus, Trash2, Edit, Loader2, UtensilsCrossed, Upload } from 'lucide-react';
+import { Plus, Trash2, Edit, Loader2, UtensilsCrossed, Upload, Link } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 const MenuPage = () => {
@@ -19,16 +18,14 @@ const MenuPage = () => {
   const [category, setCategory] = useState('Main Course');
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState(''); 
+  const [imageSource, setImageSource] = useState('upload'); 
 
   useEffect(() => {
-    console.log('1. MenuPage loaded, checking auth...');
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('2. Auth state changed:', user);
       if (user) {
-        console.log('3. User logged in, UID:', user.uid);
         setRestaurantId(user.uid);
       } else {
-        console.log('3. NO USER - PLEASE LOGIN');
         setLoading(false);
         toast.error('Please login first');
       }
@@ -36,28 +33,17 @@ const MenuPage = () => {
     return () => unsubscribe();
   }, []);
 
-  
   useEffect(() => {
-    console.log('4. restaurantId changed:', restaurantId);
-    if (!restaurantId) {
-      console.log('5. No restaurantId, skipping fetch');
-      return;
-    }
-
-    console.log('6. Fetching menu for restaurant:', restaurantId);
+    if (!restaurantId) return;
     const menuRef = collection(db, 'restaurants', restaurantId, 'menuItems');
     const unsubscribe = onSnapshot(query(menuRef), (snapshot) => {
-      console.log('7. Menu snapshot received, docs:', snapshot.docs.length);
       const items = snapshot.docs.map(doc => ({ id: doc.id,...doc.data() }));
       setMenuItems(items);
       setLoading(false);
-      console.log('8. Loading complete, items:', items);
     }, (error) => {
-      console.error('7. ERROR fetching menu:', error);
       toast.error('Failed to load menu: ' + error.message);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [restaurantId]);
 
@@ -66,14 +52,31 @@ const MenuPage = () => {
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
+      setImageUrlInput(''); 
     }
+  };
+
+  const handleUrlChange = (e) => {
+    const url = e.target.value;
+    setImageUrlInput(url);
+    setImagePreview(url); 
+    setImageFile(null); 
   };
 
   const uploadImage = async () => {
     if (!imageFile) return null;
-    const storageRef = ref(storage, `menu-images/${restaurantId}/${Date.now()}-${imageFile.name}`);
-    const snapshot = await uploadBytes(storageRef, imageFile);
-    return await getDownloadURL(snapshot.ref);
+    const formData = new FormData();
+    formData.append('file', imageFile);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const res = await fetch(CLOUDINARY_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Upload failed');
+    return data.secure_url;
   };
 
   const handleSubmit = async (e) => {
@@ -83,8 +86,14 @@ const MenuPage = () => {
 
     setUploading(true);
     try {
-      let imageUrl = editingItem?.image || '';
-      if (imageFile) imageUrl = await uploadImage();
+      let finalImageUrl = editingItem?.image || '';
+
+      if (imageSource === 'upload' && imageFile) {
+        finalImageUrl = await uploadImage();
+      }
+      else if (imageSource === 'url' && imageUrlInput.trim()) {
+        finalImageUrl = imageUrlInput.trim();
+      }
 
       const menuRef = collection(db, 'restaurants', restaurantId, 'menuItems');
       if (editingItem) {
@@ -92,7 +101,7 @@ const MenuPage = () => {
           name: dishName.trim(),
           price: Number(price),
           category: category,
-          imageUrl: imageUrl,
+          image: finalImageUrl,
           updatedAt: serverTimestamp()
         });
         toast.success('Item updated!');
@@ -101,7 +110,7 @@ const MenuPage = () => {
           name: dishName.trim(),
           price: Number(price),
           category: category,
-          image: imageUrl,
+          image: finalImageUrl,
           available: true,
           createdAt: serverTimestamp()
         });
@@ -133,7 +142,9 @@ const MenuPage = () => {
     setPrice(item.price.toString());
     setCategory(item.category);
     setImagePreview(item.image || '');
+    setImageUrlInput(item.image || '');
     setImageFile(null);
+    setImageSource('url'); 
     setIsModalOpen(true);
   };
 
@@ -143,6 +154,8 @@ const MenuPage = () => {
     setCategory('Main Course');
     setImageFile(null);
     setImagePreview('');
+    setImageUrlInput('');
+    setImageSource('upload');
     setEditingItem(null);
   };
 
@@ -217,22 +230,61 @@ const MenuPage = () => {
                   <option value="Beverage">Beverage</option>
                 </select>
               </div>
+
+              {/* NAYA: IMAGE SOURCE SELECTOR */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Image</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-orange-500 transition">
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" id="image-upload" />
-                  <label htmlFor="image-upload" className="cursor-pointer">
-                    {imagePreview? (
-                      <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg mb-2" />
-                    ) : (
-                      <div className="py-8">
-                        <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-600">Click to upload image</p>
-                      </div>
-                    )}
-                  </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Image</label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setImageSource('upload')}
+                    className={`flex-1 py-2 px-3 rounded-lg border-2 flex items-center justify-center gap-2 ${imageSource === 'upload'? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-300 text-gray-600'}`}
+                  >
+                    <Upload className="w-4 h-4" /> Upload
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageSource('url')}
+                    className={`flex-1 py-2 px-3 rounded-lg border-2 flex items-center justify-center gap-2 ${imageSource === 'url'? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-300 text-gray-600'}`}
+                  >
+                    <Link className="w-4 h-4" /> URL
+                  </button>
                 </div>
+
+                {/* UPLOAD MODE */}
+                {imageSource === 'upload' && (
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-orange-500 transition">
+                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" id="image-upload" />
+                    <label htmlFor="image-upload" className="cursor-pointer">
+                      {imagePreview? (
+                        <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg mb-2" />
+                      ) : (
+                        <div className="py-8">
+                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                          <p className="text-gray-600">Click to upload image</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                )}
+
+                {/* URL MODE */}
+                {imageSource === 'url' && (
+                  <div>
+                    <input
+                      type="url"
+                      value={imageUrlInput}
+                      onChange={handleUrlChange}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none mb-3"
+                    />
+                    {imagePreview && (
+                      <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
+                    )}
+                  </div>
+                )}
               </div>
+
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={uploading} className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2">

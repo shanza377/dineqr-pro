@@ -2,8 +2,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-
 
 const firebaseConfig = {
   apiKey: "AIzaSyDS-5MisAqkaU02c9A9dxwcuPV0GWAFdy0",
@@ -18,8 +16,11 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export auth and db for use in other files
+// Export auth and db
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+
+export const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpxvoaalx/image/upload";
+export const CLOUDINARY_UPLOAD_PRESET = "dineqr_unsigned";
+
 export default app;
