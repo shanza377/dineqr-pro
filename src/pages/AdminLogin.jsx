@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth'; // signOut add kiya
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth'; 
 import { auth } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { UtensilsCrossed, Mail, Lock } from 'lucide-react';
@@ -25,7 +25,7 @@ export default function AdminLogin() {
         await signOut(auth); 
         toast.error('Please verify your email first. Check your inbox!');
         setLoading(false);
-        return; 
+        return;
       }
 
       toast.success('Logged in successfully!');
