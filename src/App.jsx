@@ -16,9 +16,13 @@ import MyOrders from './pages/MyOrders';
 import FeedbackPage from './pages/FeedbackPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import FeedbackAdminPage from './pages/FeedbackAdminPage';
+import { BasketProvider } from './context/BasketContext';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
+    <AuthProvider>
+      <BasketProvider>
       <BrowserRouter>
         <Routes>
         <Route path="/" element={<Landing />} />
@@ -40,6 +44,8 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </BasketProvider>
+    </AuthProvider>
   );
 }
 

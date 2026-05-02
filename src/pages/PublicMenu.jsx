@@ -4,17 +4,20 @@ import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp } from 'fireb
 import { db } from '../firebase';
 import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, ClipboardList, Bell } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useBasket } from '../context/BasketContext'; // 👈 YE ADD KAR
 
 export default function PublicMenu() {
   const navigate = useNavigate();
   const { restaurantId, tableId } = useParams();
   const [restaurant, setRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
-  const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCart, setShowCart] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [lastOrderId, setLastOrderId] = useState(null);
+
+  // 👇 CONTEXT SE CART LE - LOCAL STATE DELETE KAR DE
+  const { basket: cart, addToBasket, updateQty, removeFromBasket, clearBasket, totalAmount: totalPrice, totalItems: cartCount } = useBasket();
 
   useEffect(() => {
     if (tableId) {
@@ -45,8 +48,6 @@ export default function PublicMenu() {
     fetchData();
   }, [restaurantId]);
 
-  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
       toast.error("Cart is empty");
@@ -57,7 +58,7 @@ export default function PublicMenu() {
 
     try {
       const docRef = await addDoc(collection(db, 'orders'), {
-        restaurantId: restaurantId, // ✅ YE BILKUL SAHI HAI
+        restaurantId: restaurantId,
         tableId: tableId,
         items: cart.map(item => ({
           id: item.id,
@@ -74,7 +75,7 @@ export default function PublicMenu() {
       localStorage.setItem(`lastOrder_${tableId}`, docRef.id);
 
       toast.success('Order placed successfully! Redirecting...');
-      setCart([]);
+      clearBasket(); // 👈 CONTEXT WALA CLEAR
       setShowCart(false);
 
       setTimeout(() => {
@@ -90,29 +91,15 @@ export default function PublicMenu() {
   };
 
   const addToCart = (item) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id? {...i, qty: i.qty + 1 } : i);
-      }
-      return [...prev, {...item, qty: 1 }];
-    });
-    toast.success(`${item.name} added to cart`);
+    addToBasket(item); // 👈 CONTEXT KA FUNCTION
   };
 
-  const updateQty = (itemId, change) => {
-    setCart(prev => {
-      return prev.map(item => {
-        if (item.id === itemId) {
-          const newQty = item.qty + change;
-          return newQty > 0? {...item, qty: newQty } : null;
-        }
-        return item;
-      }).filter(Boolean);
-    });
+  const handleUpdateQty = (itemId, change) => {
+    const item = cart.find(i => i.id === itemId);
+    if (item) {
+      updateQty(itemId, item.qty + change); // 👈 CONTEXT KA FUNCTION
+    }
   };
-
-  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
   if (loading) {
     return (
@@ -126,7 +113,6 @@ export default function PublicMenu() {
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-center" />
 
-      {/* TOP BAR - ACTIVE ORDER BANNER */}
       {lastOrderId && (
         <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-3 sticky top-0 z-50 shadow-lg">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -168,10 +154,9 @@ export default function PublicMenu() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 👇 MY ORDERS BUTTON - THEEK KAR DIYA */}
             {tableId && (
               <Link
-                to={`/my-orders/${restaurantId}/${tableId}`} // ✅ FIXED
+                to={`/my-orders/${restaurantId}/${tableId}`}
                 className="p-3 bg-white/20 hover:bg-white/30 rounded-xl transition"
               >
                 <ClipboardList className="w-6 h-6" />
@@ -241,7 +226,6 @@ export default function PublicMenu() {
         )}
       </div>
 
-      {/* FLOATING TRACK BUTTON - Bottom Right */}
       {lastOrderId && (
         <Link
           to={`/track/${lastOrderId}`}
@@ -277,14 +261,14 @@ export default function PublicMenu() {
                       </div>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => updateQty(item.id, -1)}
+                          onClick={() => handleUpdateQty(item.id, -1)}
                           className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="font-bold w-8 text-center">{item.qty}</span>
                         <button
-                          onClick={() => updateQty(item.id, 1)}
+                          onClick={() => handleUpdateQty(item.id, 1)}
                           className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
                         >
                           <Plus className="w-4 h-4" />
