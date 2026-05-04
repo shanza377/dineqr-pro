@@ -167,7 +167,6 @@ export default function OrdersPage() {
 
   return (
     <div className="p-6">
-      
       <Toaster position="top-center" />
       
       {/* 👇 HIDDEN KITCHEN RECEIPT */}
