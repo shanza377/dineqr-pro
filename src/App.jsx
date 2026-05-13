@@ -30,6 +30,7 @@ function App() {
         <Route path="/admin/signup" element={<Adminsignup />} />
         <Route path="/demo" element={<DemoDashboard />} />
         <Route path="/menu/:restaurantId/:tableId" element={<PublicMenu />} />
+        <Route path="/order/:restaurantId" element={<PublicMenu />} />
         <Route path="/my-orders/:restaurantId/:tableId" element={<MyOrders />} />
         <Route path="/track/:orderId" element={<OrderTracking />} />
         <Route path="/feedback/:orderId" element={<FeedbackPage />} />

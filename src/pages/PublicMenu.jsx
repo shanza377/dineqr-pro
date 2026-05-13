@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, ClipboardList, Bell } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, ClipboardList, Bell, Home, Package, Store } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { useBasket } from '../context/BasketContext'; // 👈 YE ADD KAR
+import { useBasket } from '../context/BasketContext';
 
 export default function PublicMenu() {
   const navigate = useNavigate();
@@ -16,7 +16,13 @@ export default function PublicMenu() {
   const [placing, setPlacing] = useState(false);
   const [lastOrderId, setLastOrderId] = useState(null);
 
-  // 👇 CONTEXT SE CART LE - LOCAL STATE DELETE KAR DE
+  const [orderType, setOrderType] = useState(tableId? 'dine_in' : null); 
+  const [customerInfo, setCustomerInfo] = useState({
+    name: '',
+    phone: '',
+    address: ''
+  });
+
   const { basket: cart, addToBasket, updateQty, removeFromBasket, clearBasket, totalAmount: totalPrice, totalItems: cartCount } = useBasket();
 
   useEffect(() => {
@@ -54,12 +60,21 @@ export default function PublicMenu() {
       return;
     }
 
+    // ✅ NAYA: Delivery ke liye validation
+    if (orderType === 'delivery') {
+      if (!customerInfo.name.trim() ||!customerInfo.phone.trim() ||!customerInfo.address.trim()) {
+        toast.error("Please fill all delivery details");
+        return;
+      }
+    }
+
     setPlacing(true);
 
     try {
-      const docRef = await addDoc(collection(db, 'orders'), {
+      const orderData = {
         restaurantId: restaurantId,
-        tableId: tableId,
+        tableId: tableId || null,
+        orderType: orderType, // ✅ NAYA: dine_in, delivery, pickup
         items: cart.map(item => ({
           id: item.id,
           name: item.name,
@@ -69,13 +84,27 @@ export default function PublicMenu() {
         })),
         totalAmount: totalPrice,
         status: 'pending',
-        createdAt: serverTimestamp()
-      });
+        createdAt: serverTimestamp(),
+        // ✅ NAYA: Delivery info save karo
+       ...(orderType === 'delivery' && {
+          customerName: customerInfo.name,
+          customerPhone: customerInfo.phone,
+          customerAddress: customerInfo.address
+        }),
+       ...(orderType === 'pickup' && {
+          customerName: customerInfo.name,
+          customerPhone: customerInfo.phone
+        })
+      };
 
-      localStorage.setItem(`lastOrder_${tableId}`, docRef.id);
+      const docRef = await addDoc(collection(db, 'orders'), orderData);
+
+      if (tableId) {
+        localStorage.setItem(`lastOrder_${tableId}`, docRef.id);
+      }
 
       toast.success('Order placed successfully! Redirecting...');
-      clearBasket(); // 👈 CONTEXT WALA CLEAR
+      clearBasket();
       setShowCart(false);
 
       setTimeout(() => {
@@ -91,13 +120,13 @@ export default function PublicMenu() {
   };
 
   const addToCart = (item) => {
-    addToBasket(item); // 👈 CONTEXT KA FUNCTION
+    addToBasket(item);
   };
 
   const handleUpdateQty = (itemId, change) => {
     const item = cart.find(i => i.id === itemId);
     if (item) {
-      updateQty(itemId, item.qty + change); // 👈 CONTEXT KA FUNCTION
+      updateQty(itemId, item.qty + change);
     }
   };
 
@@ -109,11 +138,54 @@ export default function PublicMenu() {
     );
   }
 
+  if (!orderType &&!tableId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Toaster position="top-center" />
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          {restaurant?.logoUrl && (
+            <img
+              src={restaurant.logoUrl}
+              alt="Logo"
+              className="w-24 h-24 rounded-full mx-auto mb-6 object-cover shadow-md"
+            />
+          )}
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{restaurant?.name || 'Restaurant'}</h1>
+          <p className="text-gray-600 mb-8">How would you like to receive your order?</p>
+
+          <div className="space-y-4">
+            <button
+              onClick={() => setOrderType('dine_in')}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition"
+            >
+              <Store className="w-6 h-6" />
+              Dine In
+            </button>
+            <button
+              onClick={() => setOrderType('delivery')}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition"
+            >
+              <Home className="w-6 h-6" />
+              Home Delivery
+            </button>
+            <button
+              onClick={() => setOrderType('pickup')}
+              className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition"
+            >
+              <Package className="w-6 h-6" />
+              Takeaway / Pickup
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-center" />
 
-      {lastOrderId && (
+      {lastOrderId && tableId && (
         <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-3 sticky top-0 z-50 shadow-lg">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -150,6 +222,11 @@ export default function PublicMenu() {
                 {restaurant?.name || 'Restaurant'}
               </h1>
               {tableId && <p className="text-xs text-white/80">Table: {tableId}</p>}
+              {!tableId && orderType && (
+                <p className="text-xs text-white/80 capitalize">
+                  {orderType === 'delivery'? '🏠 Home Delivery' : orderType === 'pickup'? '🛍️ Pickup' : '🍽️ Dine In'}
+                </p>
+              )}
             </div>
           </div>
 
@@ -226,7 +303,7 @@ export default function PublicMenu() {
         )}
       </div>
 
-      {lastOrderId && (
+      {lastOrderId && tableId && (
         <Link
           to={`/track/${lastOrderId}`}
           className="fixed bottom-24 right-4 bg-blue-500 text-white p-4 rounded-full shadow-2xl hover:bg-blue-600 z-50 hover:scale-110 transition-all"
@@ -276,6 +353,38 @@ export default function PublicMenu() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* ✅ NAYA: Delivery/Pickup Form */}
+              {cart.length > 0 && (orderType === 'delivery' || orderType === 'pickup') && (
+                <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                  <h4 className="font-bold text-gray-900">
+                    {orderType === 'delivery'? 'Delivery Details' : 'Pickup Details'}
+                  </h4>
+                  <input
+                    type="text"
+                    placeholder="Your Name *"
+                    value={customerInfo.name}
+                    onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Phone Number *"
+                    value={customerInfo.phone}
+                    onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
+                  />
+                  {orderType === 'delivery' && (
+                    <textarea
+                      placeholder="Delivery Address *"
+                      value={customerInfo.address}
+                      onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
+                    />
+                  )}
                 </div>
               )}
             </div>
