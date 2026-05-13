@@ -1,7 +1,7 @@
-// src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,11 +16,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const analytics = getAnalytics(app);
 
-
-// Export auth and db
-export const auth = getAuth(app);
-export const db = getFirestore(app);
 
 export const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpxvoaalx/image/upload";
 export const CLOUDINARY_UPLOAD_PRESET = "dineqr-pro";
